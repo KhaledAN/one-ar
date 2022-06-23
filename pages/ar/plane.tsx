@@ -8,29 +8,28 @@ import ModelSelection from "components/Fragments/ModelSelection";
 import type { NextPage } from "next";
 import { useARState } from "providers/ARProvider";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Matrix4, Quaternion } from "three";
+import { Matrix4 } from "three";
 
-const HitTest: React.FC<any> = ({ model, isRunning, setIsRunning }) => {
+const HitTest: React.FC<any> = ({ model, options, isRunning, setIsRunning }) => {
   const ref = useRef<any>();
   const [placedObjects, setPlacedObjects] = useState<{ matrix: Matrix4; model: string }[]>([]);
-  const [rotation, setRotation] = useState(0);
   useHitTest((hitMatrix) => {
     if (!isRunning) setIsRunning(true);
     if (model && ref.current) {
-      const [x, y, z] = ref.current.rotation;
-      hitMatrix.decompose(ref.current.position, new Quaternion(x, y, z + rotation), ref.current.scale);
+      hitMatrix.decompose(ref.current.position, ref.current.rotation, ref.current.scale);
+      ref.current.scale.fromArray([options.scale, options.scale, options.scale]);
+      if (options.rotation) {
+        const planeIndex = ref.current.rotation.toArray().findIndex((v: number) => v != 0);
+        const axes = ["x", "y", "z", "w"];
+        for (let i = 0; i < 4; i++) {
+          if (i == planeIndex) axes[i] = options.rotation;
+          else axes[i] = ref.current.rotation[axes[i]];
+        }
+        ref.current.rotation.set(...axes);
+      }
     }
   });
   useEffect(() => () => setIsRunning(false), []);
-
-  useEffect(() => {
-    document?.getElementById("rotateLeft")?.addEventListener("click", () => {
-      setRotation(rotation + Math.PI / 2);
-    });
-    document?.getElementById("rotateRight")?.addEventListener("click", () => {
-      setRotation(rotation - Math.PI / 2);
-    });
-  }, [ref.current]);
 
   useEffect(() => {
     document?.getElementById("placeBtn")?.addEventListener("click", () => {
@@ -54,6 +53,7 @@ const PlanePage: NextPage = ({}) => {
   const { model } = useARState();
   const [isRunning, setIsRunning] = useState(false);
   const [domOverlay, setDomOverlay] = useState(null);
+  const [options, setOptions] = useState({ rotation: 0, scale: 1 });
   useEffect(() => {
     setDomOverlay({
       root: document.getElementById("content"),
@@ -71,12 +71,12 @@ const PlanePage: NextPage = ({}) => {
         <Button id="placeBtn" sx={{ position: "absolute", bottom: 100, left: "50%", transform: "translate(-50%,50%)" }}>
           Place
         </Button>
-        <ModelOptions />
+        <ModelOptions {...{ options, setOptions }} />
       </div>
       <ARCanvas sessionInit={{ requiredFeatures: ["hit-test"], optionalFeatures: ["dom-overlay"], domOverlay }}>
         <ambientLight />
         <directionalLight position={[-20, 10, -20]} />
-        <HitTest isRunning={isRunning} setIsRunning={setIsRunning} model={model} />
+        <HitTest options={options} isRunning={isRunning} setIsRunning={setIsRunning} model={model} />
         <OrbitControls />
         <DefaultXRControllers />
       </ARCanvas>

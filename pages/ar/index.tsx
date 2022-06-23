@@ -7,7 +7,6 @@ import Wrapper from "components/Layout/Wrapper";
 import { useRequester } from "hooks/useRequester";
 import { NextPage } from "next";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/router";
 import { useARActions, useARState } from "providers/ARProvider";
 import { useState } from "react";
 import PlanePage from "./plane";
